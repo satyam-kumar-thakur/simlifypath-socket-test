@@ -1,0 +1,11 @@
+node_modules
+.env
+LocalStorage
+dump.rdb
+.DS_Store
+coverage
+environments
+.vscode
+sheets/response
+jest-html-report
+logs

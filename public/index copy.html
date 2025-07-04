@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chatbox Example</title>
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <style>
+        #chatbox {
+            height: 40vh;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            background-color: black;
+            color: white;
+        }
+
+        .menu {
+            margin-top: 10px;
+        }
+
+        .menu button {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="chatbox"></div>
+    <input type="text" id="messageInput" placeholder="Type a message">
+    <button id="sendButton">Send</button>
+    <a href="http://localhost:2000/api/v1/integration/jira">click to atlassian</a>
+
+    <script>
+        const socket = io('http://localhost:2000', {
+            transports: ['websocket'],
+            query: {
+                userId: "65c0d045802b48425f607e3c",
+                source: "simplifypath_standalone_app"
+            }
+        });
+
+        // Function to display a message in the chatbox
+        function displayMessage(message) {
+            const chatbox = document.getElementById('chatbox');
+            const newMessage = document.createElement('p');
+            newMessage.textContent = message;
+            chatbox.appendChild(newMessage);
+        }
+
+        // Function to display a menu with buttons
+        function displayMenu(title, buttons) {
+            const chatbox = document.getElementById('chatbox');
+            const menuTitle = document.createElement('p');
+            menuTitle.textContent = title;
+            chatbox.appendChild(menuTitle);
+
+            const menu = document.createElement('div');
+            menu.className = 'menu';
+
+            if (Array.isArray(buttons)) {
+                buttons.forEach(buttonText => {
+                    const button = document.createElement('button');
+                    button.textContent = buttonText;
+                    button.addEventListener('click', () => sendMessage('button', buttonText));
+                    menu.appendChild(button);
+                });
+            }
+
+            chatbox.appendChild(menu);
+        }
+
+        // Function to display an upload box
+        function displayUploadBox() {
+            const chatbox = document.getElementById('chatbox');
+            const uploadBox = document.createElement('div');
+            uploadBox.className = 'upload-box';
+
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.id = 'fileInput';
+
+            const uploadButton = document.createElement('button');
+            uploadButton.textContent = 'Upload';
+            uploadButton.addEventListener('click', () => uploadFile());
+
+            uploadBox.appendChild(fileInput);
+            uploadBox.appendChild(uploadButton);
+            chatbox.appendChild(uploadBox);
+        }
+
+        // Function to upload a file
+        function uploadFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('userId', "65c0d045802b48425f607e3c");
+                formData.append('organisationId', "657bdf30a8620d08557b968f");
+
+                fetch('http://localhost:2000/api/v1/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayMessage('File uploaded successfully: ' + data.message);
+                    // Emit a socket event with type 'text' and the upload response message
+                    socket.emit('user_reply', { 
+                        message: data.message, 
+                        userId: "65c0d045802b48425f607e3c", 
+                        organisationId: "657bdf30a8620d08557b968f", 
+                        type: 'text' 
+                    });
+                })
+                .catch(error => {
+                    displayMessage('File upload failed: ' + error.message);
+                });
+            } else {
+                displayMessage('No file selected');
+            }
+        }
+
+        // Send message when the Send button is clicked or Enter key is pressed
+        const sendButton = document.getElementById('sendButton');
+        const messageInput = document.getElementById('messageInput');
+
+        sendButton.addEventListener('click', () => sendMessage('text'));
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage('text');
+            }
+        });
+
+        // Function to send a message to the server
+        function sendMessage(type, buttonMessage = '') {
+            const message = buttonMessage || messageInput.value;
+            if (message.trim() !== '') {
+                displayMessage('user----: ' + message);
+                socket.emit('user_reply', { message, userId: "65c0d045802b48425f607e3c", organisationId: "657bdf30a8620d08557b968f", type: type });
+                messageInput.value = '';
+            }
+        }
+
+        // Listen for 'bot_reply' event from the server and display the response
+        socket.on('bot_reply', (data) => {
+            if (data.type === 'button') {
+                displayMenu(data.message, data.buttons);
+            } else if (data.type === 'upload') {
+                displayUploadBox();
+            } else {
+                displayMessage('Bot: ' + data.message);
+            }
+        });
+
+        // Listen for 'disconnect' event from the server
+        socket.on('disconnect', () => {
+            displayMessage('Disconnected from the server');
+        });
+    </script>
+</body>
+
+</html>

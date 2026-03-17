@@ -22,7 +22,7 @@ app.post("/admin_docs", async (req, res) => {
     // Webhook URL and headers
     const webhookUrl = 'http://localhost:2000/api/v1/notification/send-notification';
     const headers = {
-      'x-api-key': 'db740e9ef9ecc7406649cb543b3a17a2d855a0d7f61dccf268ae16adbbf8114931d346acaeb1e422ee7916c658b352f1',
+      'x-api-key': process.env.WEBHOOK_API_KEY,
       'x-org-id': '657bdf30a8620d08557b968f',
       'Content-Type': 'application/json'
     };
